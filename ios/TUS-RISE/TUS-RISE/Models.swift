@@ -35,7 +35,13 @@ nonisolated struct RepStat: Codable, Identifiable {
     var trunk: Double?
     var lumbar: Double?
     var flags: Int
+    /// True when the ascent collapsed mid-rep (bar dumped / rep not
+    /// completed under control). Optional so pre-existing saved sessions
+    /// still decode; nil means "not evaluated", treat as not failed.
+    var failed: Bool?
     var id: Int { rep }
+
+    var isFailed: Bool { failed == true }
 }
 
 nonisolated struct FrameSample: Codable, Identifiable {
@@ -75,12 +81,14 @@ struct LiftSession: Identifiable {
 
     /// Form score heuristic (0–100): penalises lumbar flags,
     /// shallow depth, and inconsistent depth. Mirrors the web prototype.
+    /// Failed reps are excluded — an aborted ascent isn't graded on form.
     var score: Int? {
-        guard !reps.isEmpty else { return nil }
+        let counted = reps.filter { !$0.isFailed }
+        guard !counted.isEmpty else { return nil }
         var s = 100.0
-        let totalFlags = reps.reduce(0) { $0 + $1.flags }
+        let totalFlags = counted.reduce(0) { $0 + $1.flags }
         s -= min(45, Double(totalFlags) * 2.2)
-        let depths = reps.compactMap(\.depth)
+        let depths = counted.compactMap(\.depth)
         if !depths.isEmpty {
             let avg = depths.reduce(0, +) / Double(depths.count)
             if avg > 100 { s -= min(20, (avg - 100) * 0.8) }

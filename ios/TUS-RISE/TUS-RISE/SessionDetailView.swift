@@ -128,13 +128,13 @@ private struct FlowRepDots: View {
     var body: some View {
         LazyVGrid(columns: cols, alignment: .leading, spacing: 10) {
             ForEach(reps) { r in
-                Text("\(r.rep)")
+                Text(r.isFailed ? "✗" : "\(r.rep)")
                     .font(.system(size: 14, weight: .heavy))
                     .frame(width: 44, height: 44)
-                    .background((r.flags > 0 ? Theme.bad : Theme.good).opacity(0.15), in: Circle())
+                    .background((r.flags > 0 || r.isFailed ? Theme.bad : Theme.good).opacity(0.15), in: Circle())
                     .overlay(Circle().strokeBorder(
-                        (r.flags > 0 ? Theme.bad : Theme.good).opacity(0.45), lineWidth: 1.5))
-                    .foregroundStyle(r.flags > 0 ? Theme.bad : Theme.good)
+                        (r.flags > 0 || r.isFailed ? Theme.bad : Theme.good).opacity(0.45), lineWidth: 1.5))
+                    .foregroundStyle(r.flags > 0 || r.isFailed ? Theme.bad : Theme.good)
             }
         }
     }
@@ -162,6 +162,12 @@ struct Insight {
             out.append(.init(kind: .warn, icon: "exclamationmark.triangle",
                 title: "No calibration baseline",
                 body: "The video didn't start with you standing still, so spine flags couldn't be checked. Stand upright for ~2 seconds before your first rep."))
+        }
+        let failed = s.reps.filter(\.isFailed).map { "\($0.rep)" }
+        if !failed.isEmpty {
+            out.append(.init(kind: .bad, icon: "xmark.octagon",
+                title: "Failed rep detected (rep \(failed.joined(separator: ", ")))",
+                body: "The ascent stalled and reversed before lockout — this rep wasn't completed under control. Failed reps are excluded from your form assessment; consider ending the set one rep sooner."))
         }
         if s.flaggedReps == 0 && s.calibrated {
             out.append(.init(kind: .good, icon: "checkmark.seal",
@@ -279,8 +285,8 @@ private struct DetailedModeView: View {
                             Text(r.depth.map { "\(Int($0))°" } ?? "–")
                             Text(r.trunk.map { "\(Int($0))°" } ?? "–")
                             Text(r.lumbar.map { "\(Int($0))°" } ?? "–")
-                            Text(r.flags > 0 ? "\(r.flags) ⚑" : "✓")
-                                .foregroundStyle(r.flags > 0 ? Theme.bad : Theme.good)
+                            Text(r.isFailed ? "✗ failed" : (r.flags > 0 ? "\(r.flags) ⚑" : "✓"))
+                                .foregroundStyle(r.flags > 0 || r.isFailed ? Theme.bad : Theme.good)
                                 .fontWeight(.heavy)
                         }
                         .font(.system(size: 13, weight: .semibold))

@@ -6,6 +6,11 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		9FC19870300FA9C900C4A2EB /* onnxruntime in Frameworks */ = {isa = PBXBuildFile; productRef = 9FC1986F300FA9C900C4A2EB /* onnxruntime */; };
+		9FC19872300FA9C900C4A2EB /* onnxruntime_extensions in Frameworks */ = {isa = PBXBuildFile; productRef = 9FC19871300FA9C900C4A2EB /* onnxruntime_extensions */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXFileReference section */
 		9FA805313005387D00228237 /* TUS-RISE.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "TUS-RISE.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -23,6 +28,8 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				9FC19872300FA9C900C4A2EB /* onnxruntime_extensions in Frameworks */,
+				9FC19870300FA9C900C4A2EB /* onnxruntime in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -65,6 +72,8 @@
 			);
 			name = "TUS-RISE";
 			packageProductDependencies = (
+				9FC1986F300FA9C900C4A2EB /* onnxruntime */,
+				9FC19871300FA9C900C4A2EB /* onnxruntime_extensions */,
 			);
 			productName = "TUS-RISE";
 			productReference = 9FA805313005387D00228237 /* TUS-RISE.app */;
@@ -94,6 +103,9 @@
 			);
 			mainGroup = 9FA805283005387D00228237;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				9FC1986E300FA9C900C4A2EB /* XCRemoteSwiftPackageReference "onnxruntime-swift-package-manager" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 9FA805323005387D00228237 /* Products */;
 			projectDirPath = "";
@@ -330,6 +342,30 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		9FC1986E300FA9C900C4A2EB /* XCRemoteSwiftPackageReference "onnxruntime-swift-package-manager" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/microsoft/onnxruntime-swift-package-manager";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 1.24.2;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		9FC1986F300FA9C900C4A2EB /* onnxruntime */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 9FC1986E300FA9C900C4A2EB /* XCRemoteSwiftPackageReference "onnxruntime-swift-package-manager" */;
+			productName = onnxruntime;
+		};
+		9FC19871300FA9C900C4A2EB /* onnxruntime_extensions */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 9FC1986E300FA9C900C4A2EB /* XCRemoteSwiftPackageReference "onnxruntime-swift-package-manager" */;
+			productName = onnxruntime_extensions;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 9FA805293005387D00228237 /* Project object */;
 }

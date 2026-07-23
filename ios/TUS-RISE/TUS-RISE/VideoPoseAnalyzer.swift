@@ -80,6 +80,13 @@ nonisolated enum VideoPoseAnalyzer {
         // simulator it throws, so we drop to the 2D model after the first
         // failure. 2D also mirrors VidCalc.py's pixel-space math exactly.
         var use3D = true
+        // SpinePose (step 5): nil until the onnxruntime package + model are
+        // in the app, then supplies lumbar/trunk lean from the spine chain.
+        let spineEstimator = SpinePoseEstimator()
+        // One Euro smoothing on positions before angles — mirrors VidCalc's
+        // PointSmoother. freq = analysed frames per second. Without this,
+        // keypoint jitter re-crosses the rep thresholds and doubles the count.
+        let smoother = PointSmoother(freq: Double(fps) / Double(processEveryN))
 
         while let sample = output.copyNextSampleBuffer() {
             defer { index += 1 }
@@ -88,11 +95,12 @@ nonisolated enum VideoPoseAnalyzer {
                   let pixelBuffer = CMSampleBufferGetImageBuffer(sample) else { continue }
 
             progress(min(1, Double(index) / expectedFrames))
+            let t = Double(index) / Double(fps)   // video time in seconds
 
             var angles: FrameAngles?
             if use3D {
                 do {
-                    angles = try analyze3D(pixelBuffer)
+                    angles = try analyze3D(pixelBuffer, smoother: smoother, t: t)
                 } catch {
                     lastVisionError = error
                     use3D = false
@@ -100,20 +108,39 @@ nonisolated enum VideoPoseAnalyzer {
             }
             if !use3D {
                 do {
-                    angles = try analyze2D(pixelBuffer)
+                    angles = try analyze2D(pixelBuffer, smoother: smoother, t: t)
                 } catch {
                     lastVisionError = error
                     continue
                 }
             }
-            guard let angles else { continue }   // no person in this frame
+            guard var angles else { continue }   // no person in this frame
+
+            // Spine chain (SpinePose): lumbar = hip->spine_03, trunk =
+            // hip->spine_05, both angle-from-vertical in pixel space —
+            // identical to VidCalc.py's spine handling. Spine points are
+            // smoothed too, keyed "spine_0"…"spine_8".
+            if let spineEstimator, let box = angles.bodyBox,
+               let raw = spineEstimator.spinePoints(in: pixelBuffer,
+                                                    personBox: box,
+                                                    confidenceThreshold: 0.3) {
+                let spine: [SIMD2<Float>?] = raw.enumerated().map { i, pt in
+                    smooth2(smoother, "spine_\(i)", pt, at: t)
+                }
+                if let hip = spine[0], let lumbarTop = spine[3] {
+                    angles.lumbar = AngleMath.angleFromVertical(from: hip, to: lumbarTop)
+                }
+                if let hip = spine[0], let trunkTop = spine[5] {
+                    angles.trunk = AngleMath.angleFromVertical(from: hip, to: trunkTop)
+                }
+            }
 
             frames.append(FrameSample(frame: index,
                                       knee_angle: angles.knee,
                                       hip_angle: angles.hip,
                                       trunk_lean: angles.trunk,
-                                      lumbar_lean: nil,      // needs SpinePose (step 5)
-                                      phase: "UNKNOWN",      // needs rules engine (step 4)
+                                      lumbar_lean: angles.lumbar,
+                                      phase: "UNKNOWN",      // filled by RulesEngine below
                                       rep_count: 0,
                                       lumbar_flag: false))
         }
@@ -173,25 +200,31 @@ nonisolated enum VideoPoseAnalyzer {
         var knee: Double?
         var hip: Double?
         var trunk: Double?
+        var lumbar: Double?
+        /// Person bounding box in pixel coords (top-left origin) — SpinePose
+        /// is a top-down model and needs it.
+        var bodyBox: CGRect?
     }
 
     /// Vision 3D body pose (17 joints, meters). Device + macOS only.
     /// Returns nil when no person is in the frame; throws if the model can't run.
     /// Frames arrive already upright (rotation baked in during decode).
-    private static func analyze3D(_ pixelBuffer: CVPixelBuffer) throws -> FrameAngles? {
+    private static func analyze3D(_ pixelBuffer: CVPixelBuffer,
+                                  smoother: PointSmoother, t: Double) throws -> FrameAngles? {
         let request = VNDetectHumanBodyPose3DRequest()
         let handler = VNImageRequestHandler(cvPixelBuffer: pixelBuffer)
         try handler.perform([request])
         guard let obs = request.results?.first else { return nil }
 
-        // Same joints as VidCalc (landmarks 11/23/25/27, left side).
-        func pos(_ name: VNHumanBodyPose3DObservation.JointName) -> SIMD3<Float>? {
+        // Same joints as VidCalc (landmarks 11/23/25/27, left side), each
+        // One-Euro-smoothed before any angle is computed.
+        func pos(_ name: VNHumanBodyPose3DObservation.JointName, _ key: String) -> SIMD3<Float>? {
             guard let point = try? obs.recognizedPoint(name) else { return nil }
-            let t = point.position.columns.3
-            return SIMD3<Float>(t.x, t.y, t.z)
+            let c = point.position.columns.3
+            return smooth3(smoother, key, SIMD3<Float>(c.x, c.y, c.z), at: t)
         }
-        let shoulder = pos(.leftShoulder), hip = pos(.leftHip)
-        let knee = pos(.leftKnee), ankle = pos(.leftAnkle)
+        let shoulder = pos(.leftShoulder, "l_shoulder"), hip = pos(.leftHip, "l_hip")
+        let knee = pos(.leftKnee, "l_knee"), ankle = pos(.leftAnkle, "l_ankle")
 
         var angles = FrameAngles()
         if let hip, let knee, let ankle {
@@ -203,12 +236,29 @@ nonisolated enum VideoPoseAnalyzer {
         if let shoulder, let hip {
             angles.trunk = AngleMath.angleFromVertical(from: hip, to: shoulder)
         }
-        return (angles.knee == nil && angles.hip == nil) ? nil : angles
+        guard angles.knee != nil || angles.hip != nil else { return nil }
+
+        // Person box for SpinePose: project all 17 joints back to the image.
+        let width = Float(CVPixelBufferGetWidth(pixelBuffer))
+        let height = Float(CVPixelBufferGetHeight(pixelBuffer))
+        let allJoints: [VNHumanBodyPose3DObservation.JointName] = [
+            .topHead, .centerHead, .centerShoulder, .leftShoulder, .rightShoulder,
+            .leftElbow, .rightElbow, .leftWrist, .rightWrist, .root, .spine,
+            .leftHip, .rightHip, .leftKnee, .rightKnee, .leftAnkle, .rightAnkle,
+        ]
+        var pts: [SIMD2<Float>] = []
+        for joint in allJoints {
+            guard let p = try? obs.pointInImage(joint) else { continue }
+            pts.append(SIMD2<Float>(Float(p.x) * width, (1 - Float(p.y)) * height))
+        }
+        angles.bodyBox = boundingBox(of: pts)
+        return angles
     }
 
     /// Vision 2D body pose fallback — runs everywhere, including the
     /// simulator, and matches VidCalc.py's pixel-space angles most closely.
-    private static func analyze2D(_ pixelBuffer: CVPixelBuffer) throws -> FrameAngles? {
+    private static func analyze2D(_ pixelBuffer: CVPixelBuffer,
+                                  smoother: PointSmoother, t: Double) throws -> FrameAngles? {
         let request = VNDetectHumanBodyPoseRequest()
         let handler = VNImageRequestHandler(cvPixelBuffer: pixelBuffer)
         try handler.perform([request])
@@ -217,15 +267,17 @@ nonisolated enum VideoPoseAnalyzer {
         // Vision returns normalized coords (origin bottom-left); convert to
         // pixel coords with y down, like OpenCV, so the math matches the
         // Python pipeline. Frames are already upright from the decoder.
+        // Positions are One-Euro-smoothed before angles, like VidCalc.
         let width = Float(CVPixelBufferGetWidth(pixelBuffer))
         let height = Float(CVPixelBufferGetHeight(pixelBuffer))
-        func pos(_ name: VNHumanBodyPoseObservation.JointName) -> SIMD2<Float>? {
+        func pos(_ name: VNHumanBodyPoseObservation.JointName, _ key: String) -> SIMD2<Float>? {
             guard let point = try? obs.recognizedPoint(name), point.confidence > 0.3 else { return nil }
-            return SIMD2<Float>(Float(point.location.x) * width,
-                                (1 - Float(point.location.y)) * height)
+            let p = SIMD2<Float>(Float(point.location.x) * width,
+                                 (1 - Float(point.location.y)) * height)
+            return smooth2(smoother, key, p, at: t)
         }
-        let shoulder = pos(.leftShoulder), hip = pos(.leftHip)
-        let knee = pos(.leftKnee), ankle = pos(.leftAnkle)
+        let shoulder = pos(.leftShoulder, "l_shoulder"), hip = pos(.leftHip, "l_hip")
+        let knee = pos(.leftKnee, "l_knee"), ankle = pos(.leftAnkle, "l_ankle")
 
         var angles = FrameAngles()
         if let hip, let knee, let ankle {
@@ -237,6 +289,40 @@ nonisolated enum VideoPoseAnalyzer {
         if let shoulder, let hip {
             angles.trunk = AngleMath.angleFromVertical(from: hip, to: shoulder)
         }
-        return (angles.knee == nil && angles.hip == nil) ? nil : angles
+        guard angles.knee != nil || angles.hip != nil else { return nil }
+
+        // Person box for SpinePose from every confident joint.
+        if let all = try? obs.recognizedPoints(.all) {
+            let pts = all.values.filter { $0.confidence > 0.3 }.map {
+                SIMD2<Float>(Float($0.location.x) * width,
+                             (1 - Float($0.location.y)) * height)
+            }
+            angles.bodyBox = boundingBox(of: pts)
+        }
+        return angles
+    }
+
+    /// Smooth a 2D point through the shared PointSmoother (nil passes through).
+    private static func smooth2(_ smoother: PointSmoother, _ key: String,
+                                _ p: SIMD2<Float>?, at t: Double) -> SIMD2<Float>? {
+        guard let s = smoother.smooth(key, p.map { [Double($0.x), Double($0.y)] }, at: t) else { return nil }
+        return SIMD2<Float>(Float(s[0]), Float(s[1]))
+    }
+
+    /// Smooth a 3D point through the shared PointSmoother (nil passes through).
+    private static func smooth3(_ smoother: PointSmoother, _ key: String,
+                                _ p: SIMD3<Float>?, at t: Double) -> SIMD3<Float>? {
+        guard let s = smoother.smooth(key, p.map { [Double($0.x), Double($0.y), Double($0.z)] }, at: t) else { return nil }
+        return SIMD3<Float>(Float(s[0]), Float(s[1]), Float(s[2]))
+    }
+
+    /// Axis-aligned box around detected joints (pixel coords, top-left origin).
+    private static func boundingBox(of pts: [SIMD2<Float>]) -> CGRect? {
+        guard pts.count >= 4 else { return nil }
+        let minX = pts.map(\.x).min()!, maxX = pts.map(\.x).max()!
+        let minY = pts.map(\.y).min()!, maxY = pts.map(\.y).max()!
+        guard maxX > minX, maxY > minY else { return nil }
+        return CGRect(x: CGFloat(minX), y: CGFloat(minY),
+                      width: CGFloat(maxX - minX), height: CGFloat(maxY - minY))
     }
 }
