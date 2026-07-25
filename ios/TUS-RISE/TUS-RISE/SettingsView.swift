@@ -81,12 +81,62 @@ struct SettingsView: View {
                                 Divider().opacity(0.4)
                                 KVRow(key: "Pipeline", value: "MediaPipe + SpinePose")
                                 Divider().opacity(0.4)
-                                KVRow(key: "Project", value: "TUS Athlone Research")
+                                KVRow(key: "Project", value: "TUS RISE")
                             }
                         }
+
+                        FundingCard()
                     }
                     .padding(.horizontal, 20)
                     .padding(.bottom, 30)
+                }
+            }
+        }
+    }
+}
+
+/// ERDF communication & visibility compliance: the funding statement plus the
+/// official (unaltered) logo block — Government of Ireland, Co-funded by the
+/// European Union, Southern Regional Assembly, HEA. Required on all TUS RISE
+/// funded outputs. Wording and the logo block must not be changed; the block
+/// sits on a white panel so its colour marks stay legible in dark mode.
+struct FundingCard: View {
+    private let statementEN = "TUS RISE is co-funded by the Government of Ireland and the European Union through the ERDF Southern, Eastern & Midland Regional Programme 2021-27."
+    private let statementGA = "Tá TUS RISE arna chomhchistiú ag Rialtas na hÉireann agus ag an Aontas Eorpach trí Chlár Réigiúnach an Deiscirt, an Oirthir agus Lár na Tíre 2021-27 de chuid CFRE."
+
+    var body: some View {
+        GlassCard(label: "Funding & acknowledgement") {
+            VStack(alignment: .leading, spacing: 13) {
+                Image("ERDFLogoBlock")
+                    .resizable()
+                    .scaledToFit()
+                    .frame(maxWidth: 190)
+                    .frame(maxWidth: .infinity)          // centre in the card
+                    .padding(16)
+                    .background(Color.white,
+                                in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    .accessibilityLabel("Co-funded by the Government of Ireland and the European Union through the ERDF, with the Southern Regional Assembly and the Higher Education Authority")
+
+                Text(statementEN)
+                    .font(.system(size: 12.5))
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                Text(statementGA)
+                    .font(.system(size: 11))
+                    .foregroundStyle(.tertiary)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                HStack {
+                    Link(destination: URL(string: "https://tus.ie/rdi/tu-rise/")!) {
+                        Label("tus.ie/rdi/tu-rise", systemImage: "link")
+                            .font(.system(size: 12.5, weight: .semibold))
+                    }
+                    .tint(Theme.accentStrong)
+                    Spacer()
+                    Text("#EUinmyRegion")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(.tertiary)
                 }
             }
         }

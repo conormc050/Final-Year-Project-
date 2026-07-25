@@ -7,15 +7,16 @@
 //  no Vision/UIKit — so it can move into the portable analysis package
 //  and be unit-tested against JSON fixtures from the Python pipeline.
 //
-//  Deviations from VidCalc.py (temporary, until SpinePose lands in step 5):
-//  - lumbar_lean is never available, so the lumbar baseline can't lock and
-//    the lumbar-flexion flag can't fire. `calibrated` stays false — honest.
-//  - The trunk baseline locks independently from standing frames so trunk
-//    numbers are usable now. VidCalc locks lumbar+trunk together; restore
-//    that coupling when spine keypoints exist.
-//  - No One Euro smoothing on positions yet — Vision output is steadier
-//    than raw MediaPipe, and the 5° hysteresis + MIN_REP_FRAMES guard
-//    double-counting. Port PointSmoother if rep counts prove jittery.
+//  SpinePose (step 5) now supplies lumbar/trunk lean, so the lumbar+trunk
+//  baseline locks together from the first standing frames (matching VidCalc)
+//  and the lumbar-flexion flag fires; `calibrated` is true once it locks.
+//  A trunk-only fallback still locks trunk alone if SpinePose fails to
+//  produce lumbar on a clip, so trunk numbers degrade gracefully.
+//
+//  Smoothing: One Euro on positions (Smoothing.swift, PointSmoother) plus a
+//  median spike-rejection stage on the knee signal here (kneeSpikeWindow) —
+//  needed because Vision 3D angle jitter otherwise splits reps and fakes
+//  collapses. See RulesConfig.failedRepRise for the full failed-rep design.
 //
 
 import Foundation

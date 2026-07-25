@@ -54,6 +54,30 @@ nonisolated final class SpinePoseEstimator {
         do {
             let env = try ORTEnv(loggingLevel: .warning)
             let options = try ORTSessionOptions()
+            try? options.setGraphOptimizationLevel(.all)
+
+            // Route inference to the Neural Engine / GPU via the CoreML
+            // execution provider. CPU-only ORT on an A-series chip blows the
+            // real-time budget (per the performance-optimization skill); this
+            // is the single biggest win. The model's input is a fixed
+            // 1×3×256×192, so static-shape mode lets CoreML claim more nodes.
+            // Falls back to CPU if the provider isn't available (e.g. the
+            // simulator) — the run still works, just slower.
+            var provider = "CPU"
+            if ORTIsCoreMLExecutionProviderAvailable() {
+                let coreml = ORTCoreMLExecutionProviderOptions()
+                coreml.onlyAllowStaticInputShapes = true
+                do {
+                    try options.appendCoreMLExecutionProvider(with: coreml)
+                    provider = "CoreML (ANE/GPU)"
+                } catch {
+                    provider = "CPU (CoreML append failed: \(error.localizedDescription))"
+                }
+            }
+            #if DEBUG
+            print("SpinePose execution provider: \(provider)")
+            #endif
+
             session = try ORTSession(env: env, modelPath: modelURL.path, sessionOptions: options)
             inputName = try session.inputNames().first ?? "input"
         } catch {
