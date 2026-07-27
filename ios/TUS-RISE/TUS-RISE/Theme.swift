@@ -32,6 +32,26 @@ enum Theme {
     }
 }
 
+// MARK: - Research disclaimer
+
+/// Ethics/validity footnote shown wherever results are presented. Design
+/// principle 4: never present these metrics as medical or coaching truth —
+/// this is a research prototype, and the angles are only valid side-on.
+struct DisclaimerNote: View {
+    var body: some View {
+        HStack(alignment: .top, spacing: 8) {
+            Image(systemName: "info.circle")
+                .font(.system(size: 12))
+                .foregroundStyle(.tertiary)
+            Text("Research prototype — not medical or coaching advice. Angles assume a side-on (sagittal) camera view and are normalised to your own calibration, not clinical measurements.")
+                .font(.system(size: 11))
+                .foregroundStyle(.tertiary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
 // MARK: - Glass card
 
 struct GlassCard<Content: View>: View {

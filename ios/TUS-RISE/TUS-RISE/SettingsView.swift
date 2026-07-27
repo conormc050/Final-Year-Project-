@@ -81,9 +81,11 @@ struct SettingsView: View {
                             VStack(spacing: 0) {
                                 KVRow(key: "Version", value: "0.1.0 (prototype)")
                                 Divider().opacity(0.4)
-                                KVRow(key: "Pipeline", value: "MediaPipe + SpinePose")
+                                KVRow(key: "Pipeline", value: "Apple Vision 3D + SpinePose")
                                 Divider().opacity(0.4)
                                 KVRow(key: "Project", value: "TUS RISE")
+                                Divider().opacity(0.4)
+                                DisclaimerNote().padding(.vertical, 8)
                             }
                         }
 

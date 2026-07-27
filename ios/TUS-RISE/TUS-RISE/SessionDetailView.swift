@@ -38,6 +38,9 @@ struct SessionDetailView: View {
                         } else {
                             DetailedModeView(session: session)
                         }
+
+                        DisclaimerNote()
+                            .padding(.top, 2)
                     }
                     .padding(.horizontal, 20)
                     .padding(.bottom, 30)
