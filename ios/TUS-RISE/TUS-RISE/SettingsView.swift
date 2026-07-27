@@ -148,6 +148,23 @@ struct FundingCard: View {
     var body: some View {
         GlassCard(label: "Funding & acknowledgement") {
             VStack(alignment: .leading, spacing: 13) {
+                HStack(spacing: 12) {
+                    Image("TUSLogo")
+                        .resizable()
+                        .scaledToFit()
+                        .frame(height: 30)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 7)
+                        .background(Color.white,
+                                    in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+                        .accessibilityLabel("Technological University of the Shannon")
+                    Text("A research project at the Technological University of the Shannon (TUS).")
+                        .font(.system(size: 12))
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                Divider().opacity(0.4)
+
                 Image("ERDFLogoBlock")
                     .resizable()
                     .scaledToFit()
