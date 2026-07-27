@@ -120,9 +120,8 @@ struct AnalyzeView: View {
                     Task { @MainActor in analysisProgress = p }
                 }
                 let session = LiftSession(payload: payload)
-                store.add(session)
                 analysisProgress = nil
-                analyzed = session
+                analyzed = session   // shown for review; saved only if the user taps Save
             } catch {
                 analysisProgress = nil
                 analysisError = error.localizedDescription

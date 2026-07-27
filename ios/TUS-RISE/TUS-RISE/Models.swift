@@ -114,6 +114,23 @@ struct LiftSession: Identifiable {
         self.calibrated = (payload.calibrated ?? true) && payload.lumbar_baseline != nil
         self.frames = payload.frames ?? []
     }
+
+    /// Rebuild the Codable payload for persistence (mirrors the analyzer's export).
+    func payload() -> SessionPayload {
+        SessionPayload(schema_version: 1,
+                       video: video,
+                       exercise: exercise,
+                       date: ISO8601DateFormatter.flexible.string(from: date),
+                       fps: fps,
+                       process_every_n: everyN,
+                       rep_count: repCount,
+                       lumbar_baseline: lumbarBaseline,
+                       trunk_baseline: trunkBaseline,
+                       lumbar_flex_threshold: threshold,
+                       calibrated: calibrated,
+                       reps: reps,
+                       frames: frames)
+    }
 }
 
 extension ISO8601DateFormatter {
@@ -129,18 +146,58 @@ extension ISO8601DateFormatter {
 
 @MainActor
 final class SessionStore: ObservableObject {
+    /// Saved reviews only. A session isn't kept until the user taps Save on
+    /// its review — analysed-but-unsaved sessions stay ephemeral.
     @Published private(set) var sessions: [LiftSession] = []
 
-    init() {}
+    /// Documents/Sessions — one JSON file per saved review.
+    private let dir: URL = {
+        let base = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+        let d = base.appendingPathComponent("Sessions", isDirectory: true)
+        try? FileManager.default.createDirectory(at: d, withIntermediateDirectories: true)
+        return d
+    }()
+
+    /// On-disk record: the versioned payload plus the app-side session id.
+    private struct Stored: Codable { let id: String; let payload: SessionPayload }
+
+    init() { load() }
+
+    private func load() {
+        let files = (try? FileManager.default.contentsOfDirectory(at: dir, includingPropertiesForKeys: nil)) ?? []
+        let decoder = JSONDecoder()
+        sessions = files
+            .filter { $0.pathExtension == "json" }
+            .compactMap { url in
+                guard let data = try? Data(contentsOf: url),
+                      let s = try? decoder.decode(Stored.self, from: data) else { return nil }
+                return LiftSession(payload: s.payload, id: s.id)
+            }
+            .sorted { $0.date > $1.date }
+    }
 
     var sorted: [LiftSession] { sessions.sorted { $0.date > $1.date } }
     var latest: LiftSession? { sorted.first }
 
     func session(id: String) -> LiftSession? { sessions.first { $0.id == id } }
 
-    /// Insert a session produced in-app (e.g. by VideoPoseAnalyzer).
-    func add(_ session: LiftSession) {
+    /// Whether a review has already been saved to disk.
+    func isSaved(_ id: String) -> Bool { sessions.contains { $0.id == id } }
+
+    /// Persist a just-analysed review to disk and surface it in History.
+    func save(_ session: LiftSession) {
+        guard !isSaved(session.id) else { return }
+        if let data = try? JSONEncoder().encode(Stored(id: session.id, payload: session.payload())) {
+            try? data.write(to: dir.appendingPathComponent("\(session.id).json"))
+        }
         sessions.insert(session, at: 0)
+    }
+
+    /// Clear cache: delete every saved review from disk and memory.
+    func clearAll() {
+        let files = (try? FileManager.default.contentsOfDirectory(at: dir, includingPropertiesForKeys: nil)) ?? []
+        for f in files where f.pathExtension == "json" { try? FileManager.default.removeItem(at: f) }
+        sessions = []
     }
 
     // Aggregates ---------------------------------------------------

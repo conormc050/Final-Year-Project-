@@ -6,9 +6,11 @@
 import SwiftUI
 
 struct SettingsView: View {
+    @EnvironmentObject private var store: SessionStore
     @AppStorage("tusrise.theme") private var theme = "system"
     @AppStorage("tusrise.viewMode") private var viewMode = "simple"
     @AppStorage("tusrise.athlete") private var athlete = "Athlete"
+    @State private var showClearConfirm = false
 
     var body: some View {
         NavigationStack {
@@ -85,11 +87,48 @@ struct SettingsView: View {
                             }
                         }
 
+                        GlassCard(label: "Data") {
+                            VStack(alignment: .leading, spacing: 12) {
+                                HStack {
+                                    SettingLabel(icon: "internaldrive",
+                                                 name: "Saved reviews",
+                                                 desc: "Stored on this device only")
+                                    Spacer()
+                                    Text("\(store.sessions.count)")
+                                        .font(.system(size: 15, weight: .heavy))
+                                        .foregroundStyle(.secondary)
+                                }
+                                Button(role: .destructive) {
+                                    showClearConfirm = true
+                                } label: {
+                                    Label("Clear cache", systemImage: "trash")
+                                        .font(.system(size: 14.5, weight: .semibold))
+                                        .frame(maxWidth: .infinity)
+                                        .padding(.vertical, 10)
+                                        .background(Theme.bad.opacity(0.14),
+                                                    in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                                        .foregroundStyle(Theme.bad)
+                                }
+                                .buttonStyle(.plain)
+                                .disabled(store.sessions.isEmpty)
+                                .opacity(store.sessions.isEmpty ? 0.5 : 1)
+                            }
+                        }
+
                         FundingCard()
                     }
                     .padding(.horizontal, 20)
                     .padding(.bottom, 30)
                 }
+            }
+            .confirmationDialog("Clear all saved reviews?",
+                                isPresented: $showClearConfirm, titleVisibility: .visible) {
+                Button("Delete \(store.sessions.count) saved review\(store.sessions.count == 1 ? "" : "s")", role: .destructive) {
+                    store.clearAll()
+                }
+                Button("Cancel", role: .cancel) { }
+            } message: {
+                Text("This permanently removes every saved session from this device. It can't be undone.")
             }
         }
     }

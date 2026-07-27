@@ -11,9 +11,13 @@ import Charts
 
 struct SessionDetailView: View {
     let session: LiftSession
+    @EnvironmentObject private var store: SessionStore
     @AppStorage("tusrise.viewMode") private var defaultMode = "simple"
     @State private var mode: Mode = .simple
+    @State private var didSave = false
     @Environment(\.dismiss) private var dismiss
+
+    private var isSaved: Bool { didSave || store.isSaved(session.id) }
 
     enum Mode: String, CaseIterable { case simple = "Simple", detailed = "Detailed" }
 
@@ -48,6 +52,22 @@ struct SessionDetailView: View {
                     }
                 }
                 ToolbarItem(placement: .topBarTrailing) {
+                    if isSaved {
+                        Label("Saved", systemImage: "checkmark.circle.fill")
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundStyle(Theme.good)
+                    } else {
+                        Button {
+                            store.save(session)
+                            withAnimation(.snappy) { didSave = true }
+                        } label: {
+                            Label("Save", systemImage: "square.and.arrow.down")
+                                .font(.system(size: 14, weight: .semibold))
+                        }
+                        .tint(Theme.accentStrong)
+                    }
+                }
+                ToolbarItem(placement: .bottomBar) {
                     Text(session.date.formatted(date: .abbreviated, time: .shortened))
                         .font(.caption).foregroundStyle(.secondary)
                 }

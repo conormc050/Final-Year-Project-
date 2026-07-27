@@ -100,11 +100,6 @@ nonisolated enum VideoPoseAnalyzer {
         // keypoint jitter re-crosses the rep thresholds and doubles the count.
         let smoother = PointSmoother(freq: Double(fps) / Double(processEveryN))
 
-        // SpinePose timing (health metric = ms per processed frame).
-        var spineNs: UInt64 = 0
-        var spineCalls = 0
-        let wallStart = DispatchTime.now().uptimeNanoseconds
-
         // Half-rate SpinePose state: hold the last lumbar/trunk between runs.
         var lastLumbar: Double?
         var lastTrunk: Double?
@@ -144,12 +139,9 @@ nonisolated enum VideoPoseAnalyzer {
             // smoothed too, keyed "spine_0"…"spine_8".
             if let spineEstimator, let box = angles.bodyBox {
                 if spineTick % Self.spineEveryN == 0 {
-                    let spineStart = DispatchTime.now().uptimeNanoseconds
                     let raw = spineEstimator.spinePoints(in: pixelBuffer,
                                                          personBox: box,
                                                          confidenceThreshold: 0.3)
-                    spineNs += DispatchTime.now().uptimeNanoseconds - spineStart
-                    spineCalls += 1
                     if let raw {
                         let spine: [SIMD2<Float>?] = raw.enumerated().map { i, pt in
                             smooth2(smoother, "spine_\(i)", pt, at: t)
@@ -200,26 +192,6 @@ nonisolated enum VideoPoseAnalyzer {
                                          fps: Double(fps),
                                          processEveryN: processEveryN,
                                          config: config)
-
-        #if DEBUG
-        // One-run SpinePose health check: confirms the estimator loaded and
-        // lumbar/trunk actually flowed (silent nils otherwise look like a bug).
-        let lumbarCount = result.frames.filter { $0.lumbar_lean != nil }.count
-        let trunkCount = result.frames.filter { $0.trunk_lean != nil }.count
-        func f1(_ v: Double?) -> String { v.map { String(format: "%.1f", $0) } ?? "nil" }
-        print("===== TUS-RISE SPINEPOSE DIAG =====")
-        print("estimator loaded: \(spineEstimator != nil)")
-        print("frames: \(result.frames.count)  with lumbar: \(lumbarCount)  with trunk: \(trunkCount)")
-        print("calibrated: \(result.calibrated)  lumbarBaseline: \(f1(result.lumbarBaseline))  trunkBaseline: \(f1(result.trunkBaseline))")
-        print("reps flagged (lumbar): \(result.reps.filter { $0.flags > 0 }.map { $0.rep })")
-        let wallMs = Double(DispatchTime.now().uptimeNanoseconds - wallStart) / 1e6
-        let spineMs = spineCalls > 0 ? Double(spineNs) / 1e6 / Double(spineCalls) : 0
-        print(String(format: "TIMING: total %.0f ms for %d frames (%.1f ms/frame); SpinePose %.1f ms/call over %d calls",
-                     wallMs, result.frames.count,
-                     result.frames.isEmpty ? 0 : wallMs / Double(result.frames.count),
-                     spineMs, spineCalls))
-        print("===== END SPINEPOSE DIAG =====")
-        #endif
 
         let iso = ISO8601DateFormatter()
         return SessionPayload(schema_version: 1,
