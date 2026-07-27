@@ -100,6 +100,27 @@ struct SplashView: View {
                     .font(.subheadline).foregroundStyle(.secondary)
             }
         }
+        .overlay(alignment: .bottom) {
+            // Institutional acknowledgement — TUS is the host of this research
+            // internship. White panel keeps the logo unaltered and legible over
+            // the dark gradient.
+            VStack(spacing: 8) {
+                Text("A research project at")
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundStyle(.secondary)
+                Image("TUSLogo")
+                    .resizable()
+                    .scaledToFit()
+                    .frame(height: 34)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 9)
+                    .background(.white, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    .accessibilityLabel("Technological University of the Shannon")
+            }
+            .padding(.bottom, 54)
+            .opacity(drawn ? 1 : 0)
+            .animation(.easeIn(duration: 0.6).delay(0.8), value: drawn)
+        }
         .onAppear { drawn = true }
     }
 }
