@@ -79,7 +79,7 @@ struct SettingsView: View {
 
                         GlassCard(label: "About") {
                             VStack(spacing: 0) {
-                                KVRow(key: "Version", value: "0.1.0 (prototype)")
+                                KVRow(key: "Version", value: "0.2.0 (prototype)")
                                 Divider().opacity(0.4)
                                 KVRow(key: "Pipeline", value: "Apple Vision 3D + SpinePose")
                                 Divider().opacity(0.4)
