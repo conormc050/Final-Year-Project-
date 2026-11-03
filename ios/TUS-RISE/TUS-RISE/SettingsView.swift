@@ -6,9 +6,11 @@
 import SwiftUI
 
 struct SettingsView: View {
+    @EnvironmentObject private var store: SessionStore
     @AppStorage("tusrise.theme") private var theme = "system"
     @AppStorage("tusrise.viewMode") private var viewMode = "simple"
     @AppStorage("tusrise.athlete") private var athlete = "Athlete"
+    @State private var showClearConfirm = false
 
     var body: some View {
         NavigationStack {
@@ -87,11 +89,117 @@ struct SettingsView: View {
                                 KVRow(key: "Pipeline", value: "MediaPipe + SpinePose + some other stuff im sure")
                                 Divider().opacity(0.4)
                                 KVRow(key: "Project", value: "TUS Athlone Research")
+                                Divider().opacity(0.4)
+                                DisclaimerNote().padding(.vertical, 8)
                             }
                         }
+
+                        GlassCard(label: "Data") {
+                            VStack(alignment: .leading, spacing: 12) {
+                                HStack {
+                                    SettingLabel(icon: "internaldrive",
+                                                 name: "Saved reviews",
+                                                 desc: "Stored on this device only")
+                                    Spacer()
+                                    Text("\(store.sessions.count)")
+                                        .font(.system(size: 15, weight: .heavy))
+                                        .foregroundStyle(.secondary)
+                                }
+                                Button(role: .destructive) {
+                                    showClearConfirm = true
+                                } label: {
+                                    Label("Clear cache", systemImage: "trash")
+                                        .font(.system(size: 14.5, weight: .semibold))
+                                        .frame(maxWidth: .infinity)
+                                        .padding(.vertical, 10)
+                                        .background(Theme.bad.opacity(0.14),
+                                                    in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                                        .foregroundStyle(Theme.bad)
+                                }
+                                .buttonStyle(.plain)
+                                .disabled(store.sessions.isEmpty)
+                                .opacity(store.sessions.isEmpty ? 0.5 : 1)
+                            }
+                        }
+
+                        FundingCard()
                     }
                     .padding(.horizontal, 20)
                     .padding(.bottom, 30)
+                }
+            }
+            .confirmationDialog("Clear all saved reviews?",
+                                isPresented: $showClearConfirm, titleVisibility: .visible) {
+                Button("Delete \(store.sessions.count) saved review\(store.sessions.count == 1 ? "" : "s")", role: .destructive) {
+                    store.clearAll()
+                }
+                Button("Cancel", role: .cancel) { }
+            } message: {
+                Text("This permanently removes every saved session from this device. It can't be undone.")
+            }
+        }
+    }
+}
+
+/// ERDF communication & visibility compliance: the funding statement plus the
+/// official (unaltered) logo block — Government of Ireland, Co-funded by the
+/// European Union, Southern Regional Assembly, HEA. Required on all TUS RISE
+/// funded outputs. Wording and the logo block must not be changed; the block
+/// sits on a white panel so its colour marks stay legible in dark mode.
+struct FundingCard: View {
+    private let statementEN = "TUS RISE is co-funded by the Government of Ireland and the European Union through the ERDF Southern, Eastern & Midland Regional Programme 2021-27."
+    private let statementGA = "Tá TUS RISE arna chomhchistiú ag Rialtas na hÉireann agus ag an Aontas Eorpach trí Chlár Réigiúnach an Deiscirt, an Oirthir agus Lár na Tíre 2021-27 de chuid CFRE."
+
+    var body: some View {
+        GlassCard(label: "Funding & acknowledgement") {
+            VStack(alignment: .leading, spacing: 13) {
+                HStack(spacing: 12) {
+                    Image("TUSLogo")
+                        .resizable()
+                        .scaledToFit()
+                        .frame(height: 30)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 7)
+                        .background(Color.white,
+                                    in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+                        .accessibilityLabel("Technological University of the Shannon")
+                    Text("A research project at the Technological University of the Shannon (TUS).")
+                        .font(.system(size: 12))
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                Divider().opacity(0.4)
+
+                Image("ERDFLogoBlock")
+                    .resizable()
+                    .scaledToFit()
+                    .frame(maxWidth: 190)
+                    .frame(maxWidth: .infinity)          // centre in the card
+                    .padding(16)
+                    .background(Color.white,
+                                in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    .accessibilityLabel("Co-funded by the Government of Ireland and the European Union through the ERDF, with the Southern Regional Assembly and the Higher Education Authority")
+
+                Text(statementEN)
+                    .font(.system(size: 12.5))
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                Text(statementGA)
+                    .font(.system(size: 11))
+                    .foregroundStyle(.tertiary)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                HStack {
+                    Link(destination: URL(string: "https://tus.ie/rdi/tu-rise/")!) {
+                        Label("tus.ie/rdi/tu-rise", systemImage: "link")
+                            .font(.system(size: 12.5, weight: .semibold))
+                    }
+                    .tint(Theme.accentStrong)
+                    Spacer()
+                    Text("#EUinmyRegion")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(.tertiary)
                 }
             }
         }
@@ -113,6 +221,17 @@ struct SettingLabel: View {
                 Text(desc).font(.system(size: 12)).foregroundStyle(.secondary)
             }
         }
+    }
+}
+
+struct SoonTag: View {
+    var text = "Soon"
+    var body: some View {
+        Text(text.uppercased())
+            .font(.system(size: 10, weight: .bold)).kerning(0.6)
+            .padding(.horizontal, 8).padding(.vertical, 3)
+            .background(.quaternary, in: Capsule())
+            .foregroundStyle(.tertiary)
     }
 }
 
