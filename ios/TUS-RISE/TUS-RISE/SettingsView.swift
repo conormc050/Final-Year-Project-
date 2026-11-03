@@ -65,25 +65,30 @@ struct SettingsView: View {
                             }
                         }
 
-                        GlassCard(label: "Coming soon") {
-                            VStack(spacing: 0) {
-                                SoonRow(icon: "iphone", name: "Live analysis mode", desc: "Real-time flags while lifting", tag: "iOS")
-                                Divider().opacity(0.4)
-                                SoonRow(icon: "speaker.wave.2", name: "Audio form cues", desc: "Spoken alerts mid-set")
-                                Divider().opacity(0.4)
-                                SoonRow(icon: "person.2", name: "Coach sharing", desc: "Send sessions to your coach")
-                                Divider().opacity(0.4)
-                                SoonRow(icon: "applewatch", name: "Apple Watch companion", desc: "Rep count + flags on wrist")
+                        GlassCard(label: "Developer") {
+                            NavigationLink {
+                                LiDARTestView()
+                            } label: {
+                                HStack {
+                                    SettingLabel(icon: "dot.radiowaves.left.and.right",
+                                                 name: "LiDAR depth test",
+                                                 desc: "Proof of concept: spine keypoint depth")
+                                    Spacer()
+                                    Image(systemName: "chevron.right")
+                                        .font(.footnote)
+                                        .foregroundStyle(.secondary)
+                                }
                             }
+                            .buttonStyle(.plain)
                         }
 
                         GlassCard(label: "About") {
                             VStack(spacing: 0) {
-                                KVRow(key: "Version", value: "0.2.0 (prototype)")
+                                KVRow(key: "Version", value: "0.5.0 (prototype)")
                                 Divider().opacity(0.4)
-                                KVRow(key: "Pipeline", value: "Apple Vision 3D + SpinePose")
+                                KVRow(key: "Pipeline", value: "MediaPipe + SpinePose + some other stuff im sure")
                                 Divider().opacity(0.4)
-                                KVRow(key: "Project", value: "TUS RISE")
+                                KVRow(key: "Project", value: "TUS Athlone Research")
                                 Divider().opacity(0.4)
                                 DisclaimerNote().padding(.vertical, 8)
                             }
