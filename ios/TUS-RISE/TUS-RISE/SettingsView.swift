@@ -75,6 +75,23 @@ struct SettingsView: View {
                             }
                         }
 
+                        GlassCard(label: "Developer") {
+                            NavigationLink {
+                                LiDARTestView()
+                            } label: {
+                                HStack {
+                                    SettingLabel(icon: "dot.radiowaves.left.and.right",
+                                                 name: "LiDAR depth test",
+                                                 desc: "Proof of concept: spine keypoint depth")
+                                    Spacer()
+                                    Image(systemName: "chevron.right")
+                                        .font(.footnote)
+                                        .foregroundStyle(.secondary)
+                                }
+                            }
+                            .buttonStyle(.plain)
+                        }
+
                         GlassCard(label: "About") {
                             VStack(spacing: 0) {
                                 KVRow(key: "Version", value: "0.1.0 (prototype)")
