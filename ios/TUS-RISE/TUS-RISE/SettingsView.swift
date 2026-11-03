@@ -63,18 +63,6 @@ struct SettingsView: View {
                             }
                         }
 
-                        GlassCard(label: "Coming soon") {
-                            VStack(spacing: 0) {
-                                SoonRow(icon: "iphone", name: "Live analysis mode", desc: "Real-time flags while lifting", tag: "iOS")
-                                Divider().opacity(0.4)
-                                SoonRow(icon: "speaker.wave.2", name: "Audio form cues", desc: "Spoken alerts mid-set")
-                                Divider().opacity(0.4)
-                                SoonRow(icon: "person.2", name: "Coach sharing", desc: "Send sessions to your coach")
-                                Divider().opacity(0.4)
-                                SoonRow(icon: "applewatch", name: "Apple Watch companion", desc: "Rep count + flags on wrist")
-                            }
-                        }
-
                         GlassCard(label: "Developer") {
                             NavigationLink {
                                 LiDARTestView()
@@ -94,9 +82,9 @@ struct SettingsView: View {
 
                         GlassCard(label: "About") {
                             VStack(spacing: 0) {
-                                KVRow(key: "Version", value: "0.1.0 (prototype)")
+                                KVRow(key: "Version", value: "0.5.0 (prototype)")
                                 Divider().opacity(0.4)
-                                KVRow(key: "Pipeline", value: "MediaPipe + SpinePose")
+                                KVRow(key: "Pipeline", value: "MediaPipe + SpinePose + some other stuff im sure")
                                 Divider().opacity(0.4)
                                 KVRow(key: "Project", value: "TUS Athlone Research")
                             }
@@ -125,17 +113,6 @@ struct SettingLabel: View {
                 Text(desc).font(.system(size: 12)).foregroundStyle(.secondary)
             }
         }
-    }
-}
-
-struct SoonTag: View {
-    var text = "Soon"
-    var body: some View {
-        Text(text.uppercased())
-            .font(.system(size: 10, weight: .bold)).kerning(0.6)
-            .padding(.horizontal, 8).padding(.vertical, 3)
-            .background(.quaternary, in: Capsule())
-            .foregroundStyle(.tertiary)
     }
 }
 
