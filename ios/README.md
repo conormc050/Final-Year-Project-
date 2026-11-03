@@ -1,6 +1,6 @@
 # iOS
 
-Place the Xcode project or workspace here. Keep build artifacts out of the repo.
+Xcode project or workspace here. Keep build artifacts out of the repo.
 
 Suggested checklist:
 - Use Swift Package Manager / CocoaPods as preferred.
